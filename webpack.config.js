@@ -1,12 +1,25 @@
 const path = require('path');
 const HtmlWebPackPlugin = require('html-webpack-plugin');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
+const webpack = require('webpack');
+const AddAssetHtmlPlugin = require('add-asset-html-webpack-plugin');
+const TerserJSPlugin = require("terser-webpack-plugin");
+const OptimizeCSSAssetsPlugin = require("optimize-css-assets-webpack-plugin");
 
 module.exports = {
-    entry: './src/index.js',
+    entry: {
+        main: path.resolve(__dirname, 'src/index.jsx')
+    },
+    optimization: {
+        minimizer: [
+            new TerserJSPlugin(),
+            new OptimizeCSSAssetsPlugin()
+        ]
+    },
+    mode: 'production',
     output: {
         path: path.resolve(__dirname, 'dist'),
-        filename: 'bundle.js'
+        filename: 'js/[name].[hash].js'
     },
     resolve: {
         extensions: ['.js', '.jsx']
@@ -27,21 +40,45 @@ module.exports = {
                 },
             },
             {
+                test: /\.json$/,
+                use: 'json-loader'
+            },
+            {
                 test: /\.css$/,
                 use: [
                     { loader: MiniCssExtractPlugin.loader },
-                    // 'style-loader', 
-                    'css-loader'],
-            }
+                    'css-loader'
+                ],
+            },
+            {
+                test: /\.(png|jpg|gif|woff|eot|ttf|svg|mp4|webm)$/,
+                use: {
+                    loader: 'url-loader',
+                    options: {
+                        limit: 8000,
+                        name: '[hash].[ext]',
+                        outputPath: 'assets',
+                    },
+                },
+            },
         ],
     },
     plugins: [
         new HtmlWebPackPlugin({
-            template: './public/index.html',
-            filename: './index.html'
+            template: path.resolve(__dirname, 'public/index.html'),
+            filename: './index.html',
         }),
         new MiniCssExtractPlugin({
-            filename: 'assets/[name].css',
+            filename: 'css/[name].[hash].css',
+            chunkFilename: 'css/[id].[hash].css',
         }),
+        new webpack.DllReferencePlugin({
+            manifest: require('./modules-manifest.json')
+        }),
+        new AddAssetHtmlPlugin({
+            filepath: path.resolve(__dirname, 'dist/js/*.dll.js'),
+            outputPath: 'js',
+            publicPath: 'js'
+        })
     ]
 }
